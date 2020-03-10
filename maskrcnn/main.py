@@ -36,16 +36,16 @@ def main():
     # device = "cpu"
     num_classes = 2
 
-    dataset = mask_use_data('data/gaoda/12_08/', get_transform(train=True))
-    dataset_test = mask_use_data('data/gaoda/12_08/', get_transform(train=False))
+    dataset = mask_use_data('data/gaoda/gao_complete/', get_transform(train=True))
+    dataset_test = mask_use_data('data/gaoda/gao_complete/', get_transform(train=False))
 
     indices = torch.randperm(len(dataset)).tolist()
     dataset = torch.utils.data.Subset(dataset, indices[:-50])
     dataset_test = torch.utils.data.Subset(dataset_test, indices[-50:])
 
     print('333333333', len(dataset) + 50)
-    data_loader = torch.utils.data.DataLoader(dataset, batch_size=2,
-                                              shuffle=False, num_workers=4,
+    data_loader = torch.utils.data.DataLoader(dataset, batch_size=4,
+                                              shuffle=True, num_workers=4,
                                               collate_fn=utils.collate_fn)
 
     data_loader_test = torch.utils.data.DataLoader(dataset_test,
@@ -53,11 +53,13 @@ def main():
                                                    collate_fn=utils.collate_fn)
 
     model = get_model_instance_segmentation(num_classes)
+    # model.load_state_dict(torch.load('model_use/gen_20000.pth'))
     model.to(device)
+    model.load_state_dict(torch.load('model_use/gen_20000.pth'))
 
     params = [p for p in model.parameters() if p.requires_grad]
-    optimizer = torch.optim.SGD(params, lr=1e-5, momentum=0.9, weight_decay=0.0005)
-    # optimizer = torch.optim.Adam(params, lr=1e-5, weight_decay=0.0005)
+    # optimizer = torch.optim.SGD(params, lr=1e-6, momentum=0.9, weight_decay=0.0005)
+    optimizer = torch.optim.Adam(params, lr=1e-7, weight_decay=0.0005)
 
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.1)
 

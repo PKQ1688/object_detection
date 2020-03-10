@@ -84,22 +84,17 @@ class mask_use_data(data.Dataset):
         self.root = root
         self.transforms = transforms
 
-        self.masks = list(sorted(os.listdir(os.path.join(root, "12_08_mask"))))
-
-        ignore_list = ['IMG_20191118_140303_1.JPEG', 'IMG_20191119_150755_1.JPEG',
-                       'IMG_20191119_143046.JPEG', 'IMG_20191119_144209.JPEG',
-                       'IMG_20191119_151026.JPEG', 'IMG_20191118_144541.JPEG',
-                       'IMG_20191118_140229.JPEG', 'IMG_20191119_135621.JPEG',
-                       'IMG_20191119_135635.JPEG', 'IMG_20191118_164210.JPEG ']
-        self.masks = [img for img in self.masks if img not in ignore_list]
+        self.masks = list(sorted(os.listdir(os.path.join(root, "masks"))))
+        # self.masks = [img for img in self.masks if img not in ignore_list_2]
         self.imgs = self.masks
 
     def __len__(self):
         return len(self.masks)
 
     def __getitem__(self, idx):
-        img_path = os.path.join(self.root, "12_08_img", self.masks[idx])
-        mask_path = os.path.join(self.root, "12_08_mask", self.masks[idx])
+        img_path = os.path.join(self.root, "imgs", self.masks[idx])
+        mask_path = os.path.join(self.root, "masks", self.masks[idx])
+        # print(img_path)
         img = Image.open(img_path).convert("RGB")
 
         # img = Image.fromarray(np.uint8(img))

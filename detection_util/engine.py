@@ -29,7 +29,7 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq):
         targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
         try:
             # output = ctpn_model(input)
-            loss_dict = model(images, targets)
+            loss_dict_tmp = model(images, targets)
         except RuntimeError as exception:
             if "out of memory" in str(exception):
                 print("WARNING: out of memory")
@@ -47,7 +47,7 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq):
 
                 if hasattr(torch.cuda, 'empty_cache'):
                     torch.cuda.empty_cache()
-                    loss_dict = model(images, targets)
+                    loss_dict_tmp = model(images, targets)
             else:
                 raise exception
         # loss_dict = ctpn_model(images, targets)
@@ -55,19 +55,19 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq):
         # print('images', images)
         # print('targets', targets)
 
-        losses = sum(loss for loss in loss_dict.values())
+        losses_tmp = sum(loss for loss in loss_dict_tmp.values())
 
         # reduce losses over all GPUs for logging purposes
-        loss_dict_reduced = utils.reduce_dict(loss_dict)
-        losses_reduced = sum(loss for loss in loss_dict_reduced.values())
+        loss_dict_reduced_tmp = utils.reduce_dict(loss_dict_tmp)
+        losses_reduced_tmp = sum(loss for loss in loss_dict_reduced_tmp.values())
 
-        loss_value = losses_reduced.item()
+        loss_value_tmp = losses_reduced_tmp.item()
         # print('targets', targets)
 
-        if not math.isfinite(loss_value):
+        if not math.isfinite(loss_value_tmp):
             targets_ = targets[0]
             img_id = targets_['image_id'].item()
-            print('11111', img_id)
+            # print('11111', img_id)
             img_data_dict = data_loader.dataset.__dict__
             img_data_dataset = img_data_dict['dataset']
             img_data_dataset_dict = img_data_dataset.__dict__
@@ -75,9 +75,15 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq):
             img_list = img_data_dataset_dict['imgs']
             print('222222', img_list[img_id])
 
-            print("Loss is {}, stopping training".format(loss_value))
-            print(loss_dict_reduced)
-            sys.exit(1)
+            print("Loss is {}, stopping training".format(loss_value_tmp))
+            print(loss_dict_reduced_tmp)
+            # sys.exit(1)
+            continue
+        else:
+            losses = losses_tmp
+            losses_reduced = losses_reduced_tmp
+            loss_dict_reduced = loss_dict_reduced_tmp
+            loss_value = loss_value_tmp
 
         optimizer.zero_grad()
         losses.backward()
@@ -100,7 +106,6 @@ def _get_iou_types(model):
     if isinstance(model_without_ddp, torchvision.models.detection.KeypointRCNN):
         iou_types.append("keypoints")
     return iou_types
-
 
 # @torch.no_grad()
 # def evaluate(model, data_loader, device):
