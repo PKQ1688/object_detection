@@ -47,9 +47,9 @@ def make_mask_gen_img(img_path, gt_path, mask_path, img_name):
 
 
 if __name__ == '__main__':
-    # img_path = 'data/gaoda/gao_complete/imgs/'
-    # gt_path = 'data/gaoda/gao_complete/gt/'
-    # mask_path = 'data/gaoda/gao_complete/masks/'
+    # img_path = 'test_data/gaoda/gao_complete/imgs/'
+    # gt_path = 'test_data/gaoda/gao_complete/gt/'
+    # mask_path = 'test_data/gaoda/gao_complete/masks/'
     # img_list = os.listdir(img_pa
     # for img_name in img_list:
     #     try:

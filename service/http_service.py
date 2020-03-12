@@ -107,7 +107,7 @@ def service_main():
             # result_json['result'] = outp
             return json.dumps(outp, ensure_ascii=False, cls=MyEncoder)
         else:
-            return json.dumps({"error_msg": "data is None", "status": 1}, ensure_ascii=False)
+            return json.dumps({"error_msg": "test_data is None", "status": 1}, ensure_ascii=False)
 
 
     except Exception as e:

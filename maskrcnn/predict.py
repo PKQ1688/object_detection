@@ -47,13 +47,13 @@ def one_img_predict_mask(img_path, is_gts=False):
     # re_masks = outputs['masks']
     img1 = Image.fromarray(img.mul(255).permute(1, 2, 0).byte().numpy())
     # img2 = Image.fromarray(outputs[0]['masks'][0, 0].mul(255).byte().cpu().numpy())
-    img1.save('data/img1.png')
+    img1.save('test_data/img1.png')
 
     image1 = cv2.cvtColor(np.asanyarray(img1), cv2.COLOR_RGB2BGR)
 
     for i in range(len(outputs)):
         img = Image.fromarray(outputs[i]['masks'][0, 0].mul(255).byte().cpu().numpy())
-        img.save('data/mask_' + str(i) + '.png')
+        img.save('test_data/mask_' + str(i) + '.png')
 
         image = cv2.cvtColor(np.asarray(img), cv2.COLOR_RGB2BGR)
 
@@ -69,7 +69,7 @@ def one_img_predict_mask(img_path, is_gts=False):
         # image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
         # cv2.polylines(image, [approx], True, (0, 255, 0), 2)
 
-        # cv2.imwrite('data/img_mask_' + str(i) + '.png', image)
+        # cv2.imwrite('test_data/img_mask_' + str(i) + '.png', image)
 
         ret, binary = cv2.threshold(gray, 50, 255, cv2.THRESH_BINARY)
 
@@ -86,7 +86,7 @@ def one_img_predict_mask(img_path, is_gts=False):
         # image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
         cv2.polylines(image1, [hull], True, (0, 0, 255), 3)
         #
-        cv2.imwrite('data/img_mask_' + str(i) + '.png', image1)
+        cv2.imwrite('test_data/img_mask_' + str(i) + '.png', image1)
         # # print(contours)
         #
         # c = sorted(contours, key=cv2.contourArea, reverse=True)[0]
@@ -96,7 +96,7 @@ def one_img_predict_mask(img_path, is_gts=False):
         #
         # cv2.drawContours(image1, contours, -1, (0, 0, 255), 3)
         #
-        # cv2.imwrite('data/img_mask_' + str(i) + '.png', image1)
+        # cv2.imwrite('test_data/img_mask_' + str(i) + '.png', image1)
 
     # print(re_masks)
     # print(re_masks.size())
@@ -153,5 +153,5 @@ def one_img_predict_mask(img_path, is_gts=False):
 
 
 if __name__ == '__main__':
-    img_path = "data/gaoda/gao_complete/imgs/IMG_20191119_152917.JPEG"
+    img_path = "test_data/gaoda/gao_complete/imgs/IMG_20191119_152917.JPEG"
     one_img_predict_mask(img_path, is_gts=False)

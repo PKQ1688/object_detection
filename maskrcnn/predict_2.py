@@ -40,7 +40,7 @@ def one_img_predict_mask(img_path):
         outputs = model([img.to(device)])
     img1 = Image.fromarray(img.mul(255).permute(1, 2, 0).byte().numpy())
     # img2 = Image.fromarray(outputs[0]['masks'][0, 0].mul(255).byte().cpu().numpy())
-    img1.save('data/img1.png')
+    img1.save('test_data/img1.png')
 
     image1 = cv2.cvtColor(np.asanyarray(img1), cv2.COLOR_RGB2BGR)
     OLD_IMG = image1.copy()
@@ -63,7 +63,7 @@ def one_img_predict_mask(img_path):
             # cv2.putText(image1, str(scores[i].item()), (boxes[i][0], boxes[i][1] - 10), cv2.FONT_HERSHEY_COMPLEX,
             #             10, (0, 0, 255), 25)
 
-            # cv2.imwrite('data/img_box.png', image1)
+            # cv2.imwrite('test_data/img_box.png', image1)
 
             mask = np.zeros(image1.shape[:2], np.uint8)
             SIZE = (1, 65)
@@ -75,7 +75,7 @@ def one_img_predict_mask(img_path):
             mask2 = np.where((mask == 2) | (mask == 0), 0, 1).astype('uint8')
             image1 *= mask2[:, :, np.newaxis]
 
-            cv2.imwrite('data/img_cut' + str(i) + '.png', image1)
+            cv2.imwrite('test_data/img_cut' + str(i) + '.png', image1)
 
             break
 
@@ -84,5 +84,5 @@ def one_img_predict_mask(img_path):
 
 
 if __name__ == '__main__':
-    img_path = "data/gaoda/gao_complete/imgs/IMG_20191120_140856.JPEG"
+    img_path = "test_data/gaoda/gao_complete/imgs/IMG_20191120_140856.JPEG"
     one_img_predict_mask(img_path)

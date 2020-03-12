@@ -48,7 +48,7 @@ def predict(img):
 
     for i in range(len(outputs)):
         img = Image.fromarray(outputs[i]['masks'][0, 0].mul(255).byte().cpu().numpy())
-        img.save('data/mask_' + str(i) + '.png')
+        img.save('test_data/mask_' + str(i) + '.png')
 
         image = cv2.cvtColor(np.asarray(img), cv2.COLOR_RGB2BGR)
 

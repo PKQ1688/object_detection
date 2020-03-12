@@ -48,7 +48,7 @@ def draw_approx_hull_polygon(img, cnts):
 
 
 def run():
-    image = cv2.imread('data/gaoda/gao_complete/imgs/IMG_20191119_152848.JPEG')
+    image = cv2.imread('test_data/gaoda/gao_complete/imgs/IMG_20191119_152848.JPEG')
 
     cv2.imwrite('opencv/ori_img.png', image)
     thresh = cv2.Canny(image, 128, 256)

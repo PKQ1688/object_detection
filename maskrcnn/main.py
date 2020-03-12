@@ -36,8 +36,8 @@ def main():
     # device = "cpu"
     num_classes = 2
 
-    dataset = mask_use_data('data/gaoda/gao_complete/', get_transform(train=True))
-    dataset_test = mask_use_data('data/gaoda/gao_complete/', get_transform(train=False))
+    dataset = mask_use_data('test_data/gaoda/gao_complete/', get_transform(train=True))
+    dataset_test = mask_use_data('test_data/gaoda/gao_complete/', get_transform(train=False))
 
     indices = torch.randperm(len(dataset)).tolist()
     dataset = torch.utils.data.Subset(dataset, indices[:-50])

@@ -44,6 +44,6 @@ if __name__ == '__main__':
 
     s1 = time.time()
     # while True:
-    file_path = "data/gaoda/gao_complete/imgs/IMG_20191120_140856.JPEG"
+    file_path = "test_data/gaoda/gao_complete/imgs/IMG_20191120_140856.JPEG"
     res = one_image(file_path)
     print(res)
