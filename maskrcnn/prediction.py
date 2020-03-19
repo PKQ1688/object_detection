@@ -41,17 +41,18 @@ class MaskRCNNPrediction(object):
 
             num = boxes.shape[0]
 
-            boxes_list = []
+            rects = []
             for i in range(num):
                 if scores[i].item() > 0.5 and i in result_roi_list:
-                    boxes = np.array([
-                        [int(boxes[i][0]), int(boxes[i][1])],
-                        [int(boxes[i][2]), int(boxes[i][1])],
-                        [int(boxes[i][2]), int(boxes[i][3])],
-                        [int(boxes[i][0]), int(boxes[i][3])],
-                    ])
-                    boxes_list.append(boxes)
-            return boxes_list
+                    rects.append(
+                        np.array([
+                            [int(boxes[i][0]), int(boxes[i][1])],
+                            [int(boxes[i][2]), int(boxes[i][1])],
+                            [int(boxes[i][2]), int(boxes[i][3])],
+                            [int(boxes[i][0]), int(boxes[i][3])],
+                        ])
+                    )
+            return rects
 
 
 if __name__ == "__main__":
