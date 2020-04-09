@@ -153,5 +153,5 @@ def one_img_predict_mask(img_path, is_gts=False):
 
 
 if __name__ == '__main__':
-    img_path = "data/gaoda/gao_complete/imgs/IMG_20191119_152917.JPEG"
+    img_path = "/home/shizai/data2/ocr_data/idcard/img/w_43.jpg"
     one_img_predict_mask(img_path, is_gts=False)

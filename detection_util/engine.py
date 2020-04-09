@@ -25,6 +25,15 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq):
 
     # for images, targets, img_name in metric_logger.log_every(data_loader, print_freq, header):
     for images, targets in metric_logger.log_every(data_loader, print_freq, header):
+        print(images)
+        print('========')
+        print(type(images))
+        print(len(images))
+        print(targets)
+        print('-------')
+        print(type(targets))
+        print(len(targets))
+        sys.exit(1)
         images = list(image.to(device) for image in images)
         targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
         try:
