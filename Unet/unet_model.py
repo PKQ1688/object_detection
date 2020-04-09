@@ -44,7 +44,7 @@ class UNet(nn.Module):
             in_channels=features, out_channels=out_channels, kernel_size=1
         )
 
-    def forward(self, *input):
+    def forward(self, x):
         enc1 = self.encoder1(x)
         enc2 = self.encoder2(self.pool1(enc1))
         enc3 = self.encoder3(self.pool2(enc2))
