@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 
 # 读取图片
-img = cv2.imread("data/gaoda/gao_complete/imgs/IMG_20191119_152848.JPEG")
+img = cv2.imread("test_data/gaoda/gao_complete/imgs/IMG_20191119_152848.JPEG")
 cv2.imwrite('opencv/ori_img.png', img)
 # 转灰度图片
 gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)

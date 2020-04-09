@@ -146,7 +146,7 @@ class mask_use_data(data.Dataset):
 
 if __name__ == '__main__':
     # dataset = PennFudanDataset('PennFudanPed', transforms=None)  # , get_transform(train=True))
-    # data_loader = torch.utils.data.DataLoader(dataset, batch_size=2, shuffle=True, num_workers=4)
+    # data_loader = torch.utils.test_data.DataLoader(dataset, batch_size=2, shuffle=True, num_workers=4)
     # collate_fn=utils.collate_fn)
     # print('test')
     dataset = mask_use_data('/home/shizai/datadisk2/ocr_data/train')

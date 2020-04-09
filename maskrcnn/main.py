@@ -32,15 +32,12 @@ def get_transform(train):
 
 
 def main():
-    device = torch.device(
-        "cuda") if torch.cuda.is_available() else torch.device("cpu")
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     # device = "cpu"
     num_classes = 2
 
-    dataset = mask_use_data('data/gaoda/gao_complete/',
-                            get_transform(train=True))
-    dataset_test = mask_use_data(
-        'data/gaoda/gao_complete/', get_transform(train=False))
+    dataset = mask_use_data('test_data/gaoda/gao_complete/', get_transform(train=True))
+    dataset_test = mask_use_data('test_data/gaoda/gao_complete/', get_transform(train=False))
 
     indices = torch.randperm(len(dataset)).tolist()
     dataset = torch.utils.data.Subset(dataset, indices[:-50])
@@ -64,19 +61,16 @@ def main():
     # optimizer = torch.optim.SGD(params, lr=1e-6, momentum=0.9, weight_decay=0.0005)
     optimizer = torch.optim.Adam(params, lr=1e-7, weight_decay=0.0005)
 
-    lr_scheduler = torch.optim.lr_scheduler.StepLR(
-        optimizer, step_size=3, gamma=0.1)
+    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.1)
 
     num_epochs = 21
 
     for epoch in range(num_epochs):
-        train_one_epoch(model, optimizer, data_loader,
-                        device, epoch, print_freq=10)
+        train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq=10)
         lr_scheduler.step()
         if epoch % 5 == 0:
             # evaluate(ctpn_model, data_loader_test, device=device)
-            torch.save(model.state_dict(),
-                       'model_save/mask_rcnn_model_' + str(epoch) + '.pth')
+            torch.save(model.state_dict(), 'model_save/mask_rcnn_model_' + str(epoch) + '.pth')
 
     print("That's is all!")
     # torch.save(ctpn_model.state_dict(), 'mask_123_rcnn_model.pth')
