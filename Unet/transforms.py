@@ -4,18 +4,27 @@ import numpy as np
 from skimage.transform import rescale, rotate
 from torchvision.transforms import Compose
 
+from torchvision.transforms import functional as F
 
-def transforms(scale=None, angle=None, flip_prob=None):
-    transform_list = []
 
-    if scale is not None:
-        transform_list.append(Scale(scale))
-    if angle is not None:
-        transform_list.append(Rotate(angle))
-    if flip_prob is not None:
-        transform_list.append(HorizontalFlip(flip_prob))
+def transforms(scale=None, angle=None, flip_prob=None, is_train=True):
+    transform_list = list()
+    transform_list.append(ToTensor())
+    if is_train:
+        if scale is not None:
+            transform_list.append(Scale(scale))
+        if angle is not None:
+            transform_list.append(Rotate(angle))
+        if flip_prob is not None:
+            transform_list.append(HorizontalFlip(flip_prob))
 
     return Compose(transform_list)
+
+
+class ToTensor(object):
+    def __call__(self, image, target):
+        image = F.to_tensor(image)
+        return image, target
 
 
 class Scale(object):
