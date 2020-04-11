@@ -7,24 +7,35 @@ from torchvision.transforms import Compose
 from torchvision.transforms import functional as F
 
 
-def transforms(scale=None, angle=None, flip_prob=None, is_train=True):
+def get_transforms(scale=None, angle=None, flip_prob=None):
     transform_list = list()
-    transform_list.append(ToTensor())
-    if is_train:
-        if scale is not None:
-            transform_list.append(Scale(scale))
-        if angle is not None:
-            transform_list.append(Rotate(angle))
-        if flip_prob is not None:
-            transform_list.append(HorizontalFlip(flip_prob))
+    # transform_list.append(ToTensor())
+    if scale is not None:
+        transform_list.append(Scale(scale))
+    if angle is not None:
+        transform_list.append(Rotate(angle))
+    if flip_prob is not None:
+        transform_list.append(HorizontalFlip(flip_prob))
 
     return Compose(transform_list)
 
 
+# class Compose(object):
+#     def __init__(self, transforms):
+#         self.transforms = transforms
+#
+#     def __call__(self, image, mask):
+#         # image, mask = sample
+#         for t in self.transforms:
+#             image, mask = t(image, mask)
+#         return image, mask
+
+
 class ToTensor(object):
-    def __call__(self, image, target):
+    def __call__(self, image, mask):
         image = F.to_tensor(image)
-        return image, target
+        # mask = F.to_tensor(mask)
+        return image, mask
 
 
 class Scale(object):
@@ -34,7 +45,6 @@ class Scale(object):
 
     def __call__(self, sample):
         image, mask = sample
-
         img_size = image.shape[0]
 
         scale = np.random.uniform(low=1.0 - self.scale, high=1.0 + self.scale)

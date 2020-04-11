@@ -1,7 +1,5 @@
 # -*- coding:utf-8 -*-
 # @author :adolf
-import argparse
-import json
 import os
 
 import numpy as np
@@ -12,22 +10,19 @@ from tqdm import tqdm
 
 from dataset import UNetSegmentationDataset as Dataset
 from loss import DiceLoss
-from transforms import transforms
+from transforms import get_transforms
 from unet_model import UNet
-from utils import log_images, dsc
+from utils import dsc
 import logging
 
 
-# from config import *
-
-
 class Train(object):
-    def __int__(self, configs):
+    def __init__(self, configs):
         self.batch_size = configs.get("batch_size", "16")
         self.epochs = configs.get("epochs", "100")
         self.lr = configs.get("lr", "0.0001")
 
-        device_args = configs.get("device", "cuda:0")
+        device_args = configs.get("device", "cuda")
         self.device = torch.device("cpu" if not torch.cuda.is_available() else device_args)
 
         self.workers = configs.get("workers", "4")
@@ -51,17 +46,20 @@ class Train(object):
 
         self.step = 0
 
+        self.dsc_loss = DiceLoss()
+        self.model = UNet(in_channels=Dataset.in_channels, out_channels=Dataset.out_channels)
+        self.model.to(self.device)
+
     def datasets(self):
         train_datasets = Dataset(images_dir=self.images_path,
                                  image_size=self.image_size,
-                                 transform=transforms(scale=self.aug_scale, angle=self.aug_angle, flip_prob=0.5,
-                                                      is_train=True),
+                                 subset="train",
+                                 transform=get_transforms(scale=self.aug_scale, angle=self.aug_angle, flip_prob=0.5),
                                  )
 
         valid_datasets = Dataset(images_dir=self.images_path,
                                  image_size=self.image_size,
-                                 transform=transforms(scale=self.aug_scale, angle=self.aug_angle, flip_prob=0.5,
-                                                      is_train=False),
+                                 subset="validation",
                                  )
 
         return train_datasets, valid_datasets
@@ -86,15 +84,13 @@ class Train(object):
         return loader_train, loader_valid
 
     @staticmethod
-    def dsc_per_volume(validation_pred, validation_true, patient_slice_index):
+    def dsc_per_volume(validation_pred, validation_true):
+        assert len(validation_pred) == len(validation_true)
         dsc_list = []
-        num_slices = np.bincount([p[0] for p in patient_slice_index])
-        index = 0
-        for p in range(len(num_slices)):
-            y_pred = np.array(validation_pred[index: index + num_slices[p]])
-            y_true = np.array(validation_true[index: index + num_slices[p]])
+        for p in range(len(validation_pred)):
+            y_pred = np.array([validation_pred[p]])
+            y_true = np.array([validation_true[p]])
             dsc_list.append(dsc(y_pred, y_true))
-            index += num_slices[p]
         return dsc_list
 
     @staticmethod
@@ -116,16 +112,15 @@ class Train(object):
 
         return logger
 
-    def train_one_epoch(self, model, optimizer, data_loader, dsc_loss, loss_train, epoch, max_epoch):
-        model.train()
-
+    def train_one_epoch(self, optimizer, data_loader, epoch):
+        self.model.train()
+        loss_train = []
         for i, data in enumerate(data_loader):
-            self.step += 1
             x, y_true = data
             x, y_true = x.to(self.device), y_true.to(self.device)
 
-            y_pred = model(x)
-            loss = dsc_loss(y_pred, y_true)
+            y_pred = self.model(x)
+            loss = self.dsc_loss(y_pred, y_true)
 
             loss_train.append(loss.item())
 
@@ -134,34 +129,72 @@ class Train(object):
             optimizer.step()
 
             if self.step % 50 == 0:
-                logging.info('Epoch:[{}/{}]\t iter:[{}]\t loss={:.5f}\t '.format(epoch, max_epoch, i, loss))
+                print('Epoch:[{}/{}]\t iter:[{}]\t loss={:.5f}\t '.format(epoch, self.epochs, i, loss))
+
+            self.step += 1
+
+    def eval_model(self, data_loader, best_validation_dsc):
+        self.model.eval()
+        loss_valid = []
+
+        validation_pred = []
+        validation_true = []
+
+        for i, data in enumerate(data_loader):
+            x, y_true = data
+            x, y_true = x.to(self.device), y_true.to(self.device)
+
+            y_pred = self.model(x)
+            loss = self.dsc_loss(y_pred, y_true)
+
+            loss_valid.append(loss.item())
+
+            y_pred_np = y_pred.detach().cpu().numpy()
+
+            validation_pred.extend(
+                [y_pred_np[s] for s in range(y_pred_np.shape[0])]
+            )
+            y_true_np = y_true.detach().cpu().numpy()
+            validation_true.extend(
+                [y_true_np[s] for s in range(y_true_np.shape[0])]
+            )
+
+        mean_dsc = np.mean(
+            self.dsc_per_volume(
+                validation_pred,
+                validation_true,
+            )
+        )
+        if mean_dsc > best_validation_dsc:
+            best_validation_dsc = mean_dsc
+            torch.save(self.model.state_dict(), os.path.join(self.weights, "unet.pt"))
+            print("Best validation mean DSC: {:4f}".format(best_validation_dsc))
 
     def main(self):
+        # print('train is begin.....')
         loader_train, loader_valid = self.data_loaders()
+        # print('load data end.....')
 
         # loaders = {"train": loader_train, "valid": loader_valid}
 
-        unet = UNet(in_channels=Dataset.in_channels, out_channels=Dataset.out_channels)
-        unet.to(self.device)
-
-        dsc_loss = DiceLoss()
         best_validation_dsc = 0.0
 
-        params = [p for p in unet.parameters() if p.requires_grad]
+        params = [p for p in self.model.parameters() if p.requires_grad]
 
-        optimizer = optim.Adam(unet.parameters(), lr=self.lr)
-
-        loss_train = []
-        loss_valid = []
+        optimizer = optim.Adam(params, lr=self.lr)
 
         for epoch in tqdm(range(self.epochs), total=self.epochs):
-            self.train_one_epoch(unet, optimizer, loader_train, dsc_loss, loss_train, epoch, self.epochs)
+            self.train_one_epoch(optimizer, loader_train, epoch)
+            self.eval_model(loader_valid, best_validation_dsc)
 
 
 if __name__ == '__main__':
     import yaml
-    with open('config.yaml', 'r') as fp:
-        config = yaml.load(fp.read())
 
-    trainer = Train()
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
+    with open('config.yaml', 'r') as fp:
+        config = yaml.load(fp.read(), Loader=yaml.FullLoader)
+
+    trainer = Train(configs=config)
     trainer.main()
