@@ -9,6 +9,13 @@
           </mappings>
         </serverdata>
       </paths>
+      <paths name="my-model">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/home/shizai/adolf/ai+rpa/ocr/ocr_use/object_detection" local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
     </serverData>
     <option name="myAutoUpload" value="ALWAYS" />
   </component>

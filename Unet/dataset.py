@@ -41,11 +41,12 @@ class UNetSegmentationDataset(Dataset):
 
         img_list = os.listdir(os.path.join(self.images_dir, "masks"))
         # print(img_list)
-        img_list = img_list[:30]
+        img_list = img_list
         for img_name in img_list:
             # print(img_name)
             mask_slices = [imread(os.path.join(self.images_dir, "masks", img_name), as_gray=True)]
             image_slices = [imread(os.path.join(self.images_dir, "imgs", img_name))]
+            # print(image_slices[0].shape)
 
             volumes[img_name] = np.array(image_slices)
             masks[img_name] = np.array(mask_slices)
