@@ -53,15 +53,16 @@ class Train(object):
     def datasets(self):
         train_datasets = Dataset(images_dir=self.images_path,
                                  image_size=self.image_size,
-                                 subset="train",
+                                 subset="train",  # train
                                  transform=get_transforms(scale=self.aug_scale, angle=self.aug_angle, flip_prob=0.5),
                                  )
+        valid_datasets = train_datasets
 
-        valid_datasets = Dataset(images_dir=self.images_path,
-                                 image_size=self.image_size,
-                                 subset="validation",
-                                 )
-
+        # valid_datasets = Dataset(images_dir=self.images_path,
+        #                          image_size=self.image_size,
+        #                          subset="validation",  # validation
+        #                          )
+        #
         return train_datasets, valid_datasets
 
     def data_loaders(self):
@@ -165,6 +166,7 @@ class Train(object):
                 validation_true,
             )
         )
+        print('mean_dsc:', mean_dsc)
         if mean_dsc > best_validation_dsc:
             best_validation_dsc = mean_dsc
             torch.save(self.model.state_dict(), os.path.join(self.weights, "unet.pt"))
@@ -191,7 +193,7 @@ class Train(object):
 if __name__ == '__main__':
     import yaml
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "4"
 
     with open('config.yaml', 'r') as fp:
         config = yaml.load(fp.read(), Loader=yaml.FullLoader)

@@ -9,7 +9,7 @@ import os
 def make_mask_img(img_path, gt_path, mask_path, img_name):
     # _, img_name = os.path.split(img_path)
     img = cv2.imread(os.path.join(img_path, img_name))
-    with open(os.path.join(gt_path, img_name.replace('JPEG', 'json')), 'r') as f:
+    with open(os.path.join(gt_path, img_name.replace('png', 'json')), 'r') as f:
         gt = json.loads(f.read())
         gt = gt['shapes']
 
@@ -40,32 +40,34 @@ def make_mask_gen_img(img_path, gt_path, mask_path, img_name):
 
     gt_list = txt_to_list(txt_path)
     img_mask = np.zeros((img.shape[:2]), dtype=np.uint8)
-    area = np.array(gt_list)
+    area = np.array(gt_list, dtype=np.int32)
+    # print(area)
     cv2.fillPoly(img_mask, [area], 1)
 
     cv2.imwrite(os.path.join(mask_path, img_name), img_mask)
 
 
 if __name__ == '__main__':
-    # img_path = 'test_data/gaoda/gao_complete/imgs/'
-    # gt_path = 'test_data/gaoda/gao_complete/gt/'
-    # mask_path = 'test_data/gaoda/gao_complete/masks/'
-    # img_list = os.listdir(img_pa
-    # for img_name in img_list:
-    #     try:
-    #         make_mask_img(img_path, gt_path, mask_path, img_name)
-    #     except Exception as e:
-    #         print(e)
-    #         pass
-    img_path = '/home/shizai/data2/ocr_data/gaoda/gaoda_gen/imgs/'
-    gt_path = '/home/shizai/data2/ocr_data/gaoda/gaoda_gen/gt/'
-    mask_path = '/home/shizai/data2/ocr_data/gaoda/gaoda_gen/masks'
+    img_path = '/datadisk2/ocr_data/idcard_detection/imgs/'
+    gt_path = '/datadisk2/ocr_data/idcard_detection/jsons'
+    mask_path = '/datadisk2/ocr_data/idcard_detection/masks/'
     img_list = os.listdir(img_path)
     for img_name in img_list:
         try:
-            make_mask_gen_img(img_path, gt_path, mask_path, img_name)
+            make_mask_img(img_path, gt_path, mask_path, img_name)
         except Exception as e:
             print(e)
+            pass
+    # img_path = '/home/shizai/datadisk2/ocr_data/idcard_detection/imgs/'
+    # gt_path = '/home/shizai/datadisk2/ocr_data/idcard_detection/gts/'
+    #
+    # mask_path = '/home/shizai/datadisk2/ocr_data/idcard_detection/masks/'
+    # img_list = os.listdir(img_path)
+    # for img_name in img_list:
+    #     try:
+    #         make_mask_gen_img(img_path, gt_path, mask_path, img_name)
+    #     except Exception as e:
+    #         print(e)
 
     # img = cv2.imread(os.path.join(mask_path, 'res_2757.png'))
     # img = 100 * img

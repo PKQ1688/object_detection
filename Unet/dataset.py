@@ -37,11 +37,11 @@ class UNetSegmentationDataset(Dataset):
         volumes = {}
         masks = {}
 
-        # print("begining")
+        print("begining")
 
         img_list = os.listdir(os.path.join(self.images_dir, "masks"))
         # print(img_list)
-        img_list = img_list
+        img_list = img_list[:2]
         for img_name in img_list:
             # print(img_name)
             mask_slices = [imread(os.path.join(self.images_dir, "masks", img_name), as_gray=True)]
@@ -67,21 +67,21 @@ class UNetSegmentationDataset(Dataset):
                 )
 
         # print("preprocessing {} volumes...".format(subset))
-        self.volumes = [(volumes[k], masks[k]) for k in self.patients]
+        # self.volumes = [(volumes[k], masks[k]) for k in self.patients]
 
         # print("cropping {} volumes...".format(subset))
-        self.volumes = [crop_sample(v) for v in self.volumes]
+        # self.volumes = [crop_sample(v) for v in self.volumes]
 
         # print("padding {} volumes...".format(subset))
-        self.volumes = [pad_sample(v) for v in self.volumes]
+        # self.volumes = [pad_sample(v) for v in self.volumes]
 
         # print("resizing {} volumes...".format(subset))
-        self.volumes = [resize_sample(v, size=image_size) for v in self.volumes]
+        # self.volumes = [resize_sample(v, size=image_size) for v in self.volumes]
 
         # print("normalizing {} volumes...".format(subset))
         import time
         s1 = time.time()
-        self.volumes = [(normalize_volume(v), m) for v, m in self.volumes]
+        # self.volumes = [(normalize_volume(v), m) for v, m in self.volumes]
         # print('cost time', time.time() - s1)
 
         self.volumes = [(v, m[..., np.newaxis]) for (v, m) in self.volumes]
