@@ -70,6 +70,8 @@ class PennFudanDataset(object):
         target["area"] = area
         target["iscrowd"] = iscrowd
 
+
+
         if self.transforms is not None:
             img, target = self.transforms(img, target)
 

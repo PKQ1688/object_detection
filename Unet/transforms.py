@@ -1,114 +1,122 @@
 # -*- coding:utf-8 -*-
 # @author :adolf
-import numpy as np
-from skimage.transform import rescale, rotate
-from torchvision.transforms import Compose
+import random
+import torch
 
 from torchvision.transforms import functional as F
+from PIL import Image
+import torchvision.transforms as transforms
 
 
-def get_transforms(scale=None, angle=None, flip_prob=None):
-    transform_list = list()
-    # transform_list.append(ToTensor())
-    if scale is not None:
-        transform_list.append(Scale(scale))
-    if angle is not None:
-        transform_list.append(Rotate(angle))
-    if flip_prob is not None:
-        transform_list.append(HorizontalFlip(flip_prob))
-
-    return Compose(transform_list)
+def get_transforms(train):
+    transforms_l = list()
+    transforms_l.append(ToTensor())
+    if train:
+        # transforms_l.append(Resize(256))
+        transforms_l.append(RandomHorizontalFlip(0.5))
+    # transforms_l.append(ToTensor())
+    return Compose(transforms_l)
 
 
-# class Compose(object):
-#     def __init__(self, transforms):
-#         self.transforms = transforms
-#
-#     def __call__(self, image, mask):
-#         # image, mask = sample
-#         for t in self.transforms:
-#             image, mask = t(image, mask)
-#         return image, mask
+get_transforms2 = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+])
+
+
+def get_transforms_3():
+    transforms_l = list()
+    transforms_l.append(ToTensor_p())
+    # transforms_l.append(transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]))
+    return Compose_p(transforms_l)
+
+
+class Compose(object):
+    def __init__(self, transforms):
+        self.transforms = transforms
+
+    def __call__(self, image, mask):
+        for t in self.transforms:
+            image, mask = t(image, mask)
+        return image, mask
+
+
+class Compose_p(object):
+    def __init__(self, transforms):
+        self.transforms = transforms
+
+    def __call__(self, image):
+        for t in self.transforms:
+            image = t(image)
+        return image
+
+
+class RandomHorizontalFlip(object):
+    def __init__(self, prob):
+        self.prob = prob
+
+    def __call__(self, image, mask):
+        if random.random() < self.prob:
+            # height, width = image.shape[-2:]
+            image = image.flip(-1)
+            mask = mask.flip(-1)
+
+        return image, mask
 
 
 class ToTensor(object):
     def __call__(self, image, mask):
         image = F.to_tensor(image)
-        # mask = F.to_tensor(mask)
         return image, mask
 
 
-class Scale(object):
+class ToTensor_p(object):
+    def __call__(self, image):
+        image = F.to_tensor(image)
+        return image
 
-    def __init__(self, scale):
-        self.scale = scale
 
-    def __call__(self, sample):
-        image, mask = sample
-        img_size = image.shape[0]
+class ScaleResize(object):
+    def __init__(self, shortest_side=600):
+        self.shortest_side = shortest_side
 
-        scale = np.random.uniform(low=1.0 - self.scale, high=1.0 + self.scale)
+    def __call__(self, image, target):
+        width = image.size[0]
+        height = image.size[1]
 
-        image = rescale(
-            image,
-            (scale, scale),
-            multichannel=True,
-            preserve_range=True,
-            mode="constant",
-            anti_aliasing=False,
-        )
-        mask = rescale(
-            mask,
-            (scale, scale),
-            order=0,
-            multichannel=True,
-            preserve_range=True,
-            mode="constant",
-            anti_aliasing=False,
-        )
-
-        if scale < 1.0:
-            diff = (img_size - image.shape[0]) / 2.0
-            padding = ((int(np.floor(diff)), int(np.ceil(diff))),) * 2 + ((0, 0),)
-            image = np.pad(image, padding, mode="constant", constant_values=0)
-            mask = np.pad(mask, padding, mode="constant", constant_values=0)
+        # scale = float(self.shortest_side) / float(min(height, width))
+        if height > width:
+            scale = float(self.shortest_side) / float(width)
+            image = F.resize(image, (self.shortest_side, int(height * scale)), 2)
         else:
-            x_min = (image.shape[0] - img_size) // 2
-            x_max = x_min + img_size
-            image = image[x_min:x_max, x_min:x_max, ...]
-            mask = mask[x_min:x_max, x_min:x_max, ...]
+            scale = float(self.shortest_side) / float(height)
+            image = F.resize(image, (int(width * scale), self.shortest_side), 2)
 
-        return image, mask
+        h_scale = float(image.size[1]) / float(height)
+        w_scale = float(image.size[0]) / float(width)
 
-
-class Rotate(object):
-
-    def __init__(self, angle):
-        self.angle = angle
-
-    def __call__(self, sample):
-        image, mask = sample
-
-        angle = np.random.uniform(low=-self.angle, high=self.angle)
-        image = rotate(image, angle, resize=False, preserve_range=True, mode="constant")
-        mask = rotate(
-            mask, angle, resize=False, order=0, preserve_range=True, mode="constant"
-        )
-        return image, mask
+        scale_gt = []
+        # print('2target', target)
+        bbox = target["boxes"]
+        for box in bbox:
+            scale_box = []
+            for i in range(len(box)):
+                if i % 2 == 0:
+                    scale_box.append(int(int(box[i]) * w_scale))
+                else:
+                    scale_box.append(int(int(box[i]) * h_scale))
+            scale_gt.append(scale_box)
+        boxes = torch.as_tensor(scale_gt, dtype=torch.float32)
+        target["boxes"] = boxes
+        return image, target
 
 
-class HorizontalFlip(object):
+class Resize(object):
+    def __init__(self, size, interpolation=Image.BILINEAR):
+        self.size = size
+        self.interpolation = interpolation
 
-    def __init__(self, flip_prob):
-        self.flip_prob = flip_prob
-
-    def __call__(self, sample):
-        image, mask = sample
-
-        if np.random.rand() > self.flip_prob:
-            return image, mask
-
-        image = np.fliplr(image).copy()
-        mask = np.fliplr(mask).copy()
-
-        return image, mask
+    def __call__(self, img, mask):
+        img = F.resize(img, self.size, self.interpolation)
+        mask = F.resize(img, self.size, self.interpolation)
+        return img, mask

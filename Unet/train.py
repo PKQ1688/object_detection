@@ -15,6 +15,8 @@ from unet_model import UNet
 from utils import dsc
 import logging
 
+import cv2
+
 
 class Train(object):
     def __init__(self, configs):
@@ -40,9 +42,14 @@ class Train(object):
 
         self.images_path = configs.get("images_path", "./data")
 
-        self.image_size = configs.get("image_size", "256")
-        self.aug_scale = configs.get("aug_scale", "0.05")
-        self.aug_angle = configs.get("aug_angle", "15")
+        self.is_resize = config.get("is_resize", False)
+        self.image_short_side = config.get("image_short_side", 256)
+
+        self.is_padding = config.get("is_padding", False)
+
+        # self.image_size = configs.get("image_size", "256")
+        # self.aug_scale = configs.get("aug_scale", "0.05")
+        # self.aug_angle = configs.get("aug_angle", "15")
 
         self.step = 0
 
@@ -52,17 +59,23 @@ class Train(object):
 
     def datasets(self):
         train_datasets = Dataset(images_dir=self.images_path,
-                                 image_size=self.image_size,
+                                 # image_size=self.image_size,
                                  subset="train",  # train
-                                 transform=get_transforms(scale=self.aug_scale, angle=self.aug_angle, flip_prob=0.5),
+                                 transform=get_transforms(train=True),
+                                 is_resize=self.is_resize,
+                                 image_short_side=self.image_short_side,
+                                 is_padding=self.is_padding
                                  )
-        valid_datasets = train_datasets
+        # valid_datasets = train_datasets
 
-        # valid_datasets = Dataset(images_dir=self.images_path,
-        #                          image_size=self.image_size,
-        #                          subset="validation",  # validation
-        #                          )
-        #
+        valid_datasets = Dataset(images_dir=self.images_path,
+                                 # image_size=self.image_size,
+                                 subset="validation",  # validation
+                                 transform=get_transforms(train=False),
+                                 is_resize=self.is_resize,
+                                 image_short_side=self.image_short_side,
+                                 is_padding=False
+                                 )
         return train_datasets, valid_datasets
 
     def data_loaders(self):
@@ -77,7 +90,7 @@ class Train(object):
         )
         loader_valid = DataLoader(
             dataset_valid,
-            batch_size=self.batch_size,
+            batch_size=1,
             drop_last=False,
             num_workers=self.workers,
         )
@@ -121,6 +134,8 @@ class Train(object):
             x, y_true = x.to(self.device), y_true.to(self.device)
 
             y_pred = self.model(x)
+            # print('1111', y_pred.size())
+            # print('2222', y_true.size())
             loss = self.dsc_loss(y_pred, y_true)
 
             loss_train.append(loss.item())
@@ -129,7 +144,7 @@ class Train(object):
             loss.backward()
             optimizer.step()
 
-            if self.step % 50 == 0:
+            if self.step % 200 == 0:
                 print('Epoch:[{}/{}]\t iter:[{}]\t loss={:.5f}\t '.format(epoch, self.epochs, i, loss))
 
             self.step += 1
@@ -145,8 +160,19 @@ class Train(object):
             x, y_true = data
             x, y_true = x.to(self.device), y_true.to(self.device)
 
-            y_pred = self.model(x)
-            loss = self.dsc_loss(y_pred, y_true)
+            # print(x.size())
+            # print(333,x[0][2])
+            with torch.no_grad():
+                y_pred = self.model(x)
+                loss = self.dsc_loss(y_pred, y_true)
+
+            # print(y_pred.shape)
+            mask = y_pred > 0.5
+            mask = mask * 255
+            mask = mask.cpu().numpy()[0][0]
+            # print(mask)
+            # print(mask.shape())
+            cv2.imwrite('result.png', mask)
 
             loss_valid.append(loss.item())
 
@@ -166,10 +192,10 @@ class Train(object):
                 validation_true,
             )
         )
-        print('mean_dsc:', mean_dsc)
+        # print('mean_dsc:', mean_dsc)
         if mean_dsc > best_validation_dsc:
             best_validation_dsc = mean_dsc
-            torch.save(self.model.state_dict(), os.path.join(self.weights, "unet.pt"))
+            torch.save(self.model.state_dict(), os.path.join(self.weights, "unet_idcard_1.pth"))
             print("Best validation mean DSC: {:4f}".format(best_validation_dsc))
 
     def main(self):
@@ -193,7 +219,7 @@ class Train(object):
 if __name__ == '__main__':
     import yaml
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = "4"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "6"
 
     with open('config.yaml', 'r') as fp:
         config = yaml.load(fp.read(), Loader=yaml.FullLoader)

@@ -8,11 +8,11 @@ import torch
 from PIL import Image
 
 from torch.utils.data import Dataset
-
-from skimage.io import imread
-
-from utils import crop_sample, pad_sample, resize_sample, normalize_volume
+import math
 from transforms import get_transforms
+import cv2
+
+from utils import pad_sample
 
 
 class UNetSegmentationDataset(Dataset):
@@ -26,36 +26,34 @@ class UNetSegmentationDataset(Dataset):
             transform=None,
             random_sampling=True,
             subset="train",
+            is_resize=True,
+            image_short_side=736,
+            is_padding=False
     ):
         self.images_dir = images_dir
         self.transform = transform
         self.image_size = image_size
         self.random_sampling = random_sampling
+        self.is_resize = is_resize
+        self.image_short_side = image_short_side
+        self.is_padding = is_padding
 
         assert subset in ["all", "train", "validation"]
 
-        volumes = {}
-        masks = {}
+        self.volumes = {}
+        self.masks = {}
 
         print("begining")
 
         img_list = os.listdir(os.path.join(self.images_dir, "masks"))
+
+        # img_list = img_list[:2]
         # print(img_list)
-        img_list = img_list[:2]
-        for img_name in img_list:
-            # print(img_name)
-            mask_slices = [imread(os.path.join(self.images_dir, "masks", img_name), as_gray=True)]
-            image_slices = [imread(os.path.join(self.images_dir, "imgs", img_name))]
-            # print(image_slices[0].shape)
 
-            volumes[img_name] = np.array(image_slices)
-            masks[img_name] = np.array(mask_slices)
+        self.patients = sorted(img_list)
 
-        # print('load image is end .....')
-        self.patients = sorted(volumes)
-
-        # validation_cases = 10
-        validation_cases = int(0.1 * len(self.patients))
+        # validation_cases = 1
+        validation_cases = int(0.02 * len(self.patients))
 
         if not subset == "all":
             validation_patients = random.sample(self.patients, k=validation_cases)
@@ -65,50 +63,69 @@ class UNetSegmentationDataset(Dataset):
                 self.patients = sorted(
                     list(set(self.patients).difference(validation_patients))
                 )
+        for img_name in self.patients:
+            mask = Image.open(os.path.join(self.images_dir, "masks", img_name))
 
-        # print("preprocessing {} volumes...".format(subset))
-        # self.volumes = [(volumes[k], masks[k]) for k in self.patients]
+            img = cv2.imread(os.path.join(self.images_dir, "imgs", img_name))
+            img = Image.fromarray(img).convert("RGB")
 
-        # print("cropping {} volumes...".format(subset))
-        # self.volumes = [crop_sample(v) for v in self.volumes]
+            if self.is_padding:
+                img, mask = pad_sample(img, mask)
 
-        # print("padding {} volumes...".format(subset))
-        # self.volumes = [pad_sample(v) for v in self.volumes]
+            assert img.size == mask.size
+            img, mask = self.resize_img(img, mask)
 
-        # print("resizing {} volumes...".format(subset))
-        # self.volumes = [resize_sample(v, size=image_size) for v in self.volumes]
+            mask = np.array(mask)
+            mask = mask[np.newaxis, ...]
+            mask = torch.as_tensor(mask, dtype=torch.uint8)
 
-        # print("normalizing {} volumes...".format(subset))
-        import time
-        s1 = time.time()
-        # self.volumes = [(normalize_volume(v), m) for v, m in self.volumes]
-        # print('cost time', time.time() - s1)
+            if self.transform is not None:
+                img, mask = self.transform(img, mask)
 
-        self.volumes = [(v, m[..., np.newaxis]) for (v, m) in self.volumes]
+            self.volumes[img_name] = img
+            self.masks[img_name] = mask
+
+        print('load image is end .....')
 
     def __len__(self):
-        return len(self.volumes)
+        return len(self.patients)
 
     def __getitem__(self, idx):
         # print(self.volumes)
-        image, mask = self.volumes[idx]
+        img_name = self.patients[idx]
 
         # v, m = self.volumes[]
-        image = image[0]
-        mask = mask[0]
+        image = self.volumes[img_name]
+        mask = self.masks[img_name]
+        # print(img_name, image.shape)
+        # print('mask', mask.shape)
+        return image, mask
 
-        if self.transform is not None:
-            image, mask = self.transform((image, mask))
-
-        # fix dimensions (C, H, W)
-        image = image.transpose(2, 0, 1)
-        mask = mask.transpose(2, 0, 1)
-
-        image_tensor = torch.from_numpy(image.astype(np.float32))
-        mask_tensor = torch.from_numpy(mask.astype(np.float32))
-
-        # return tensors
-        return image_tensor, mask_tensor
+    def resize_img(self, img, mask):
+        '''输入PIL格式的图片'''
+        width, height = img.size
+        if self.is_resize:
+            if height < width:
+                new_height = self.image_short_side
+                new_width = int(math.ceil(new_height / height * width / 32) * 32)
+            else:
+                new_width = self.image_short_side
+                new_height = int(math.ceil(new_width / width * height / 32) * 32)
+        else:
+            if height < width:
+                scale = int(height / 32)
+                new_image_short_side = scale * 32
+                new_height = new_image_short_side
+                new_width = int(math.ceil(new_height / height * width / 32) * 32)
+            else:
+                scale = int(width / 32)
+                new_image_short_side = scale * 32
+                new_width = new_image_short_side
+                new_height = int(math.ceil(new_width / width * height / 32) * 32)
+        resized_img = img.resize((new_width, new_height), Image.ANTIALIAS)
+        resized_mask = mask.resize((new_width, new_height), Image.ANTIALIAS)
+        # print(new_height, new_width)
+        return resized_img, resized_mask
 
 
 if __name__ == '__main__':
@@ -116,6 +133,6 @@ if __name__ == '__main__':
         images_dir="/data3/adolf/ocr_hup/object_detection/data/gaoda/12_08",
         image_size=256,
         subset="train",
-        transform=get_transforms(scale=0.05, angle=15, flip_prob=0.5),
+        transform=get_transforms(train=True),
     )
     train_datasets.__getitem__(2)

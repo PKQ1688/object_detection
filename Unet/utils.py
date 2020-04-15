@@ -5,6 +5,8 @@ import numpy as np
 from skimage.exposure import rescale_intensity
 from skimage.transform import resize
 
+from PIL import Image, ImageOps
+
 
 def dsc(y_pred, y_true, lcc=True):
     if lcc and np.any(y_pred):
@@ -35,21 +37,26 @@ def crop_sample(x):
     )
 
 
-def pad_sample(x):
-    volume, mask = x
-    a = volume.shape[1]
-    b = volume.shape[2]
+def pad_sample(img, mask):
+    assert img.size == mask.size
+    # img, mask = np.array(img), np.array(mask)
+    # print(img.size)
+    a = img.size[0]
+    b = img.size[1]
     if a == b:
-        return volume, mask
+        return img, mask
     diff = (max(a, b) - min(a, b)) / 2.0
     if a > b:
-        padding = ((0, 0), (0, 0), (int(np.floor(diff)), int(np.ceil(diff))))
+        padding = (0, int(np.floor(diff)), 0, int(np.ceil(diff)))
     else:
-        padding = ((0, 0), (int(np.floor(diff)), int(np.ceil(diff))), (0, 0))
-    mask = np.pad(mask, padding, mode="constant", constant_values=0)
-    padding = padding + ((0, 0),)
-    volume = np.pad(volume, padding, mode="constant", constant_values=0)
-    return volume, mask
+        padding = (int(np.floor(diff)), 0, int(np.ceil(diff)), 0)
+
+    img = ImageOps.expand(img, border=padding, fill=0)  ##left,top,right,bottom
+    mask = ImageOps.expand(mask, border=padding, fill=0)  ##left,top,right,bottom
+    # print(img.size)
+
+    assert img.size[0] == img.size[1]
+    return img, mask
 
 
 def resize_sample(x, size=256):
