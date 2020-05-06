@@ -15,7 +15,57 @@ from unet_model import UNet
 from utils import dsc
 import logging
 
+# from pytorchtools import EarlyStopping
+
 import cv2
+import utils
+import lr_scheduler
+
+
+class EarlyStopping:
+    """Early stops the training if validation loss doesn't improve after a given patience."""
+
+    def __init__(self, patience=7, verbose=False, delta=0):
+        """
+        Args:
+            patience (int): How long to wait after last time validation loss improved.
+                            Default: 7
+            verbose (bool): If True, prints a message for each validation loss improvement.
+                            Default: False
+            delta (float): Minimum change in the monitored quantity to qualify as an improvement.
+                            Default: 0
+        """
+        self.patience = patience
+        self.verbose = verbose
+        self.counter = 0
+        self.best_score = None
+        self.early_stop = False
+        self.val_loss_min = np.Inf
+        self.delta = delta
+
+    def __call__(self, val_loss, model):
+
+        score = -val_loss
+
+        if self.best_score is None:
+            self.best_score = score
+            self.save_checkpoint(val_loss, model)
+        elif score < self.best_score + self.delta:
+            self.counter += 1
+            print(f'EarlyStopping counter: {self.counter} out of {self.patience}')
+            if self.counter >= self.patience:
+                self.early_stop = True
+        else:
+            self.best_score = score
+            self.save_checkpoint(val_loss, model)
+            self.counter = 0
+
+    def save_checkpoint(self, val_loss, model):
+        '''Saves model when validation loss decrease.'''
+        if self.verbose:
+            print(f'Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}).  Saving model ...')
+        torch.save(model.state_dict(), 'checkpoint.pt')
+        self.val_loss_min = val_loss
 
 
 class Train(object):
@@ -47,6 +97,9 @@ class Train(object):
 
         self.is_padding = config.get("is_padding", False)
 
+        pre_train = config.get("pre_train", False)
+        model_path = config.get("model_path", './weights/unet_idcard_adam.pth')
+
         # self.image_size = configs.get("image_size", "256")
         # self.aug_scale = configs.get("aug_scale", "0.05")
         # self.aug_angle = configs.get("aug_angle", "15")
@@ -55,7 +108,22 @@ class Train(object):
 
         self.dsc_loss = DiceLoss()
         self.model = UNet(in_channels=Dataset.in_channels, out_channels=Dataset.out_channels)
+        if pre_train:
+            self.model.load_state_dict(torch.load(model_path, map_location=self.device), strict=False)
         self.model.to(self.device)
+
+        self.model.to(self.device)
+
+        self.best_validation_dsc = 0.0
+
+        self.loader_train, self.loader_valid = self.data_loaders()
+
+        self.params = [p for p in self.model.parameters() if p.requires_grad]
+
+        self.optimizer = optim.Adam(self.params, lr=self.lr, weight_decay=0.0005)
+        # self.optimizer = torch.optim.SGD(self.params, lr=self.lr, momentum=0.9, weight_decay=0.0005)
+        self.scheduler = lr_scheduler.LR_Scheduler_Head('poly', self.lr,
+                                                        self.epochs, len(self.loader_train))
 
     def datasets(self):
         train_datasets = Dataset(images_dir=self.images_path,
@@ -126,10 +194,12 @@ class Train(object):
 
         return logger
 
-    def train_one_epoch(self, optimizer, data_loader, epoch):
+    def train_one_epoch(self, epoch):
+
         self.model.train()
         loss_train = []
-        for i, data in enumerate(data_loader):
+        for i, data in enumerate(self.loader_train):
+            self.scheduler(self.optimizer, i, epoch, self.best_validation_dsc)
             x, y_true = data
             x, y_true = x.to(self.device), y_true.to(self.device)
 
@@ -140,23 +210,25 @@ class Train(object):
 
             loss_train.append(loss.item())
 
-            optimizer.zero_grad()
+            self.optimizer.zero_grad()
             loss.backward()
-            optimizer.step()
+            self.optimizer.step()
 
+            # lr_scheduler.step()
             if self.step % 200 == 0:
                 print('Epoch:[{}/{}]\t iter:[{}]\t loss={:.5f}\t '.format(epoch, self.epochs, i, loss))
 
             self.step += 1
 
-    def eval_model(self, data_loader, best_validation_dsc):
+    def eval_model(self, patience):
         self.model.eval()
         loss_valid = []
 
         validation_pred = []
         validation_true = []
+        # early_stopping = EarlyStopping(patience=patience, verbose=True)
 
-        for i, data in enumerate(data_loader):
+        for i, data in enumerate(self.loader_valid):
             x, y_true = data
             x, y_true = x.to(self.device), y_true.to(self.device)
 
@@ -186,6 +258,11 @@ class Train(object):
                 [y_true_np[s] for s in range(y_true_np.shape[0])]
             )
 
+        # early_stopping(loss_valid, self.model)
+        # if early_stopping.early_stop:
+        #     print('Early stopping')
+        #     import sys
+        #     sys.exit(1)
         mean_dsc = np.mean(
             self.dsc_per_volume(
                 validation_pred,
@@ -193,33 +270,28 @@ class Train(object):
             )
         )
         # print('mean_dsc:', mean_dsc)
-        if mean_dsc > best_validation_dsc:
-            best_validation_dsc = mean_dsc
-            torch.save(self.model.state_dict(), os.path.join(self.weights, "unet_idcard_1.pth"))
-            print("Best validation mean DSC: {:4f}".format(best_validation_dsc))
+        if mean_dsc > self.best_validation_dsc:
+            self.best_validation_dsc = mean_dsc
+            torch.save(self.model.state_dict(), os.path.join(self.weights, "unet_xia_adam.pth"))
+            print("Best validation mean DSC: {:4f}".format(self.best_validation_dsc))
 
     def main(self):
         # print('train is begin.....')
-        loader_train, loader_valid = self.data_loaders()
         # print('load data end.....')
 
         # loaders = {"train": loader_train, "valid": loader_valid}
 
-        best_validation_dsc = 0.0
-
-        params = [p for p in self.model.parameters() if p.requires_grad]
-
-        optimizer = optim.Adam(params, lr=self.lr)
-
         for epoch in tqdm(range(self.epochs), total=self.epochs):
-            self.train_one_epoch(optimizer, loader_train, epoch)
-            self.eval_model(loader_valid, best_validation_dsc)
+            self.train_one_epoch(epoch)
+            self.eval_model(patience=10)
+
+        torch.save(self.model.state_dict(), os.path.join(self.weights, "unet_final.pth"))
 
 
 if __name__ == '__main__':
     import yaml
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = "6"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "4"
 
     with open('config.yaml', 'r') as fp:
         config = yaml.load(fp.read(), Loader=yaml.FullLoader)

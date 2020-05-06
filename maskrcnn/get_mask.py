@@ -4,6 +4,9 @@ import cv2
 import json
 import numpy as np
 import os
+from functools import reduce
+import operator
+import math
 
 
 def make_mask_img(img_path, gt_path, mask_path, img_name):
@@ -16,16 +19,24 @@ def make_mask_img(img_path, gt_path, mask_path, img_name):
     with open(os.path.join(gt_path, img_name.replace('jpg', 'txt').replace('png', 'txt')), 'r') as f:
         for line in f.readlines():
             line = line.strip().split(',')
-            gt.append(line[:8])
+            gt.append(line[:-1])
 
     img_mask = np.zeros((img.shape[0], img.shape[1]), dtype=np.uint8)
     for i in range(len(gt)):
         one_mask = gt[i]
         # print(one_mask)
-        # points = one_mask['points']
+        # points = one_mask['points']/home/shizai/data2/ocr_data/midv_500/home/shizai/data2/ocr_data/midv_500
+
+        # print(one_mask)
         points = [int(i) for i in one_mask]
+        # points = np.array(points)
+        # points = points.reshape((4, 2))
+        # print(points)
+        # print(len(points))
+        points = [(points[i], points[i + 1]) for i in range(0, len(points), 2)]
+        # print(points)
+        points = clockwise_points(points)
         points = np.array(points)
-        points = points.reshape((4, 2))
         # print(points)
 
         # points_list = [[int(j) for j in i] for i in points]
@@ -62,10 +73,25 @@ def make_mask_gen_img(img_path, gt_path, mask_path, img_name):
     cv2.imwrite(os.path.join(mask_path, img_name), img_mask)
 
 
+def clockwise_points(point_coords):
+    """
+    以左上角为起点的顺时针排序
+    原理就是讲笛卡尔坐标转换为极坐标，然后对极坐标的**进行排序
+    :param point_coords: 待排序的点[(x,y)]
+    :return: 排完序的点
+    """
+    center_point = tuple(
+        map(operator.truediv, reduce(lambda x, y: map(operator.add, x, y), point_coords), [len(point_coords)] * 2))
+    # for m_point in point_coords:
+    #     print(m_point, math.degrees(math.atan2(*tuple(map(operator.sub, m_point, center_point))[::-1])))
+    return sorted(point_coords, key=lambda coord: (135 - math.degrees(
+        math.atan2(*tuple(map(operator.sub, coord, center_point))[::-1]))) % 360)
+
+
 if __name__ == '__main__':
-    img_path = '/home/shizai/datadisk2/ocr_data/train/rctw/imgs/'
-    gt_path = '/home/shizai/datadisk2/ocr_data/train/rctw/gts/'
-    mask_path = '/home/shizai/datadisk2/ocr_data/train/rctw/masks/'
+    img_path = '/home/shizai/data3/xiacong/card_border_callout/imgs/'
+    gt_path = '/home/shizai/data3/xiacong/card_border_callout/gts/'
+    mask_path = '/home/shizai/data3/xiacong/card_border_callout/masks/'
     img_list = os.listdir(img_path)
     for img_name in img_list:
         # print(img_name)

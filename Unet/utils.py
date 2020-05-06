@@ -6,6 +6,7 @@ from skimage.exposure import rescale_intensity
 from skimage.transform import resize
 
 from PIL import Image, ImageOps
+import torch
 
 
 def dsc(y_pred, y_true, lcc=True):
@@ -124,3 +125,13 @@ def outline(image, mask, color):
         if 0.0 < np.mean(mask[max(0, y - 1): y + 2, max(0, x - 1): x + 2]) < 1.0:
             image[max(0, y): y + 1, max(0, x): x + 1] = color
     return image
+
+
+def warmup_lr_scheduler(optimizer, warmup_iters, warmup_factor):
+    def f(x):
+        if x >= warmup_iters:
+            return 1
+        alpha = float(x) / warmup_iters
+        return warmup_factor * (1 - alpha) + alpha
+
+    return torch.optim.lr_scheduler.LambdaLR(optimizer, f)

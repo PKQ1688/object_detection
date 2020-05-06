@@ -5,7 +5,7 @@
       <paths name="gpu135">
         <serverdata>
           <mappings>
-            <mapping deploy="data3/adolf/ocr_hup/object_detection" local="$PROJECT_DIR$" web="/" />
+            <mapping deploy="/data3/adolf/ocr_hup/object_detection" local="$PROJECT_DIR$" web="/" />
           </mappings>
         </serverdata>
       </paths>

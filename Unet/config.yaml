@@ -1,6 +1,6 @@
 batch_size: 8
-epochs: 100
-lr: 1.0e-4
+epochs: 30
+lr: 1.0e-5
 
 device: "cuda"
 workers: 4
@@ -10,9 +10,8 @@ vis_freq: 10  # frequency of saving images to log file (default: 10)
 
 weights: "./weights"  # folder to save weights
 logs: "./logs"  # folder to save logs
-images_path: "/home/shizai/datadisk2/ocr_data/idcard_detection/"  # root folder with images
-#images_path: "/datadisk2/ocr_data/test/xia_biao/"
-#images_path: "/home/shizai/datadisk2/ocr_data/train/rctw/"
+#images_path: "/home/shizai/data2/ocr_data/midv_500/"  # root folder with images
+images_path: "/home/shizai/data3/xiacong/card_border_callout/"
 
 #image_size: 256  # target input image size (default: 256)
 
@@ -24,3 +23,6 @@ image_short_side: 512
 
 is_padding: True
 #image_long_side : 768
+
+pre_train: False
+model_path: "./weights/unet_idcard_adam.pth"
