@@ -10,6 +10,9 @@ import math
 
 import numpy as np
 
+import time
+
+
 # from seg_detector_representer import SegDetectorRepresenter
 
 
@@ -30,7 +33,7 @@ class OnePredict(object):
         self.transform = get_transforms_3()
 
         self.is_resize = True
-        self.image_short_side = 512
+        self.image_short_side = 1024
         self.init_torch_tensor()
         self.model.eval()
 
@@ -117,7 +120,7 @@ class OnePredict(object):
         # img = img.cpu()
         img = np.array(img, np.uint8)
 
-        cv2.drawContours(img, contours, -1, (0, 0, 255), 3)
+        cv2.drawContours(img, contours, -1, (0, 0, 255), 1)
 
         cv2.imwrite('result2.png', img)
         boxes = []
@@ -150,7 +153,11 @@ class OnePredict(object):
 
         # print(img)
         with torch.no_grad():
+            s1 = time.time()
             preds = self.model(img)
+            print(preds)
+            s2 = time.time()
+            print(s2 - s1)
             # boxes, scores = SegDetectorRepresenter().represent(pred=preds, height=h, width=w, is_output_polygon=False)
             boxes = self.post_process(preds, ori_img)
 
@@ -179,7 +186,5 @@ if __name__ == '__main__':
     os.environ["CUDA_VISIBLE_DEVICES"] = "1"
     a = {'model_path': './weights/unet_xia_adam.pth'}
     # OnePredict(a).inference("/home/shizai/data2/ocr_data/midv_500/imgs/KA11_24.jpg")
-    OnePredict(a).inference("/home/shizai/data2/ocr_data/idcard/img/w_24.jpg")
-    # OnePredict(a).inference(
-    #     "/home/shizai/datadisk2/ocr_data/idcard_detection/imgs/rotate_石段艳_26_00270728166329422Xcolor.png")
-    # OnePredict(a).inference("/home/shizai/data3/xiacong/card_border_callout/imgs/file_245.jpg")
+    # OnePredict(a).inference("/home/shizai/data2/ocr_data/idcard/img/w_24.jpg")
+    OnePredict(a).inference("/home/shizai/data2/ocr_data/china_life_test_data/imgs/img_33.jpg")

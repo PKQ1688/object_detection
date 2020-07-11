@@ -12,6 +12,7 @@ import math
 from transforms import get_transforms
 import cv2
 
+from tqdm import tqdm
 from utils import pad_sample
 
 
@@ -63,7 +64,7 @@ class UNetSegmentationDataset(Dataset):
                 self.patients = sorted(
                     list(set(self.patients).difference(validation_patients))
                 )
-        for img_name in self.patients:
+        for img_name in tqdm(self.patients):
             # if img_name != "scale_张昧谡_25_832625798833847228color.png":
             #     continue
             mask = Image.open(os.path.join(self.images_dir, "masks", img_name))

@@ -28,7 +28,7 @@ def make_mask_img(img_path, gt_path, mask_path, img_name):
         # points = one_mask['points']/home/shizai/data2/ocr_data/midv_500/home/shizai/data2/ocr_data/midv_500
 
         # print(one_mask)
-        points = [int(i) for i in one_mask]
+        points = [int(float(i)) for i in one_mask]
         # points = np.array(points)
         # points = points.reshape((4, 2))
         # print(points)
@@ -54,7 +54,7 @@ def txt_to_list(txt_path):
     with open(txt_path, 'r') as f:
         for line in f.readlines():
             one_point_list = line.strip().split(',')
-            one_point_list = [int(i) for i in one_point_list]
+            one_point_list = [int(float(i)) for i in one_point_list]
             txt_list.append(one_point_list)
 
     return txt_list
@@ -89,15 +89,17 @@ def clockwise_points(point_coords):
 
 
 if __name__ == '__main__':
-    img_path = '/home/shizai/data3/xiacong/card_border_callout/imgs/'
-    gt_path = '/home/shizai/data3/xiacong/card_border_callout/gts/'
-    mask_path = '/home/shizai/data3/xiacong/card_border_callout/masks/'
+    from tqdm import tqdm
+    img_path = '/home/shizai/data2/ocr_data/third_data/imgs/'
+    gt_path = '/home/shizai/data2/ocr_data/third_data/gts/'
+    mask_path = '/home/shizai/data2/ocr_data/third_data/masks/'
     img_list = os.listdir(img_path)
-    for img_name in img_list:
+    for img_name in tqdm(img_list):
         # print(img_name)
         try:
             make_mask_img(img_path, gt_path, mask_path, img_name)
         except Exception as e:
+            print(img_name)
             print(e)
             pass
         # break

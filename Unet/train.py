@@ -21,6 +21,8 @@ import cv2
 import utils
 import lr_scheduler
 
+import torch.nn as nn
+
 
 class EarlyStopping:
     """Early stops the training if validation loss doesn't improve after a given patience."""
@@ -97,6 +99,8 @@ class Train(object):
 
         self.is_padding = config.get("is_padding", False)
 
+        is_multi_gpu = config.get("DateParallel", False)
+
         pre_train = config.get("pre_train", False)
         model_path = config.get("model_path", './weights/unet_idcard_adam.pth')
 
@@ -110,7 +114,9 @@ class Train(object):
         self.model = UNet(in_channels=Dataset.in_channels, out_channels=Dataset.out_channels)
         if pre_train:
             self.model.load_state_dict(torch.load(model_path, map_location=self.device), strict=False)
-        self.model.to(self.device)
+
+        if is_multi_gpu:
+            self.model = nn.DataParallel(self.model)
 
         self.model.to(self.device)
 
@@ -291,7 +297,7 @@ class Train(object):
 if __name__ == '__main__':
     import yaml
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = "4"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "1,3,5,6"
 
     with open('config.yaml', 'r') as fp:
         config = yaml.load(fp.read(), Loader=yaml.FullLoader)
